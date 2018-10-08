@@ -147,20 +147,26 @@ class UserController extends SimpleController
             // Try to generate a new password request
             $passwordRequest = $this->ci->repoPasswordReset->create($user, $config['password_reset.timeouts.create']);
 
-            // Create and send welcome email with password set link
-            $message = new TwigMailMessage($this->ci->view, 'mail/password-create.html.twig');
+            $isEmailConfigured=!empty($config['mail']['host']);
+            if(!$isEmailConfigured)
+            {
+                // Final message without sending an email.
+                $ms->addMessageTranslated('success', 'User created WITHOUT welcome email!');
+            } else {
+                // Send welcome email with password set link
+                $message = new TwigMailMessage($this->ci->view, 'mail/password-create.html.twig');
 
-            $message->from($config['address_book.admin'])
-                    ->addEmailRecipient(new EmailRecipient($user->email, $user->full_name))
-                    ->addParams([
-                        'user' => $user,
-                        'create_password_expiration' => $config['password_reset.timeouts.create'] / 3600 . ' hours',
-                        'token' => $passwordRequest->getToken()
-                    ]);
+                $message->from($config['address_book.admin'])
+                        ->addEmailRecipient(new EmailRecipient($user->email, $user->full_name))
+                        ->addParams([
+                            'user' => $user,
+                            'create_password_expiration' => $config['password_reset.timeouts.create'] / 3600 . ' hours',
+                            'token' => $passwordRequest->getToken()
+                        ]);
 
-            $this->ci->mailer->send($message);
-
-            $ms->addMessageTranslated('success', 'USER.CREATED', $data);
+                $this->ci->mailer->send($message);
+                $ms->addMessageTranslated('success', 'USER.CREATED', $data);
+            }
         });
 
         return $response->withStatus(200);
